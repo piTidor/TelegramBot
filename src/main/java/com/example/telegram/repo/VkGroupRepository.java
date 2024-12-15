@@ -9,7 +9,5 @@ import java.util.List;
 
 @Repository
 public interface VkGroupRepository extends JpaRepository<VkGroup, Long> {
-    VkGroup findByName(String vkId);
-    boolean existsByVkId(Long vkId);
     List<VkGroup> getAllByUserAndGroupName(Users users, String name);
 }
