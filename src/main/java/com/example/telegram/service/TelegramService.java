@@ -2,10 +2,7 @@ package com.example.telegram.service;
 
 import com.example.telegram.config.BotConfig;
 import com.example.telegram.kafka.KafkaProducer;
-import com.example.telegram.repo.PublishPostRepo;
-import com.example.telegram.repo.TelegramLastMessageRepo;
-import com.example.telegram.repo.UsersRepository;
-import com.example.telegram.repo.VkGroupRepository;
+import com.example.telegram.repo.*;
 import com.model.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -40,6 +37,9 @@ public class TelegramService extends TelegramLongPollingBot {
     @Autowired
     KafkaProducer kafkaProducer;
 
+    @Autowired
+    DeputyUsersRepo deputyUsersRepo;
+
 
     @Override
     public String getBotUsername() {
@@ -61,7 +61,12 @@ public class TelegramService extends TelegramLongPollingBot {
             long chatId = message.getChatId();
             Users users = usersRepository.findByTelegramName(message.getFrom().getUserName());
             if (users == null){
-                return;
+                DeputyUsers deputyUsers = deputyUsersRepo.findByTelegramName(message.getFrom().getUserName());
+                if (deputyUsers == null || deputyUsers.getUser() == null){
+                    sendTGMessage(chatId,"Не нашёл вас в списке разрещённых полбзователей, обратитесь к администратору");
+                    return;
+                }
+                users = deputyUsers.getUser();
             }
             if (message.hasText() && message.getForwardFromChat() == null) {
                 String text = message.getText();
