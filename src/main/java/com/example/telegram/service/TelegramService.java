@@ -129,7 +129,7 @@ public class TelegramService extends TelegramLongPollingBot {
                         UrlPost urlPost = UrlPost.builder()
                                 .text(caption)
                                 .vkGroupId(vkGroup.getVkId())
-                                .postingId(chat.getId())
+                                .postingId(0)
                                 .attachment(attach)
                                 .postId(savedPost.getId())
                                 .userId(users.getVkId())
