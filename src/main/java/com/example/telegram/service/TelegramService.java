@@ -1,6 +1,7 @@
 package com.example.telegram.service;
 
 import com.example.telegram.config.BotConfig;
+import com.example.telegram.kafka.KafkaProducer;
 import com.example.telegram.repo.PublishPostRepo;
 import com.example.telegram.repo.TelegramLastMessageRepo;
 import com.example.telegram.repo.UsersRepository;
@@ -36,6 +37,9 @@ public class TelegramService extends TelegramLongPollingBot {
     @Autowired
     TelegramLastMessageRepo telegramLastMessageRepo;
 
+    @Autowired
+    KafkaProducer kafkaProducer;
+
 
     @Override
     public String getBotUsername() {
@@ -62,20 +66,25 @@ public class TelegramService extends TelegramLongPollingBot {
             }
             if (message.hasText() ) {
                 String text = message.getText();
-                TelegramLastMessage tg = TelegramLastMessage.builder()
-                                .user(users)
-                                .text(text)
-                                        .build();
-                telegramLastMessageRepo.save(tg);
+                String send = "";
                 List<VkGroup> vkGroups = vkGroupRepository.getAllByUserAndGroupName(users, text);
                 if (vkGroups.isEmpty()){
-                    text = "не найденно групп. попробуйте ещё раз";
+                    send = "не найденно групп "+ text +" попробуйте ещё раз";
+                } else {
+                    TelegramLastMessage tg = TelegramLastMessage.builder()
+                            .user(users)
+                            .text(text)
+                            .build();
+                    telegramLastMessageRepo.save(tg);
+                    send = "Посты будут публиковатся в " + text;
                 }
-                sendTGMessage(chatId, "Посты будут публиковатся в " + text);
-                return;
+                sendTGMessage(chatId, send);
             }
             else {
                 String text = telegramLastMessageRepo.findTopByUser(users).getText();
+                if (text == null){
+                    return;
+                }
                 List<VkGroup> vkGroups = vkGroupRepository.getAllByUserAndGroupName(users, text);
                 if (vkGroups.isEmpty()){
                     return;
@@ -125,6 +134,7 @@ public class TelegramService extends TelegramLongPollingBot {
                                 .postId(savedPost.getId())
                                 .userId(users.getVkId())
                                 .build();
+                        kafkaProducer.sendMessage( "url_post" ,urlPost.toJson());
                         sendTGMessage(chatId, "Опубликованно в " + text);
                     }
                 }
