@@ -56,7 +56,6 @@ public class TelegramService extends TelegramLongPollingBot {
         List<String> attach = new ArrayList<>();
         String caption = null;
         boolean ok = true;
-        Chat chat = null;
         if (update.hasMessage()) {
             Message message = update.getMessage();
             long chatId = message.getChatId();
@@ -64,7 +63,7 @@ public class TelegramService extends TelegramLongPollingBot {
             if (users == null){
                 return;
             }
-            if (message.hasText() ) {
+            if (message.hasText() && message.getForwardFromChat() == null) {
                 String text = message.getText();
                 String send = "";
                 List<VkGroup> vkGroups = vkGroupRepository.getAllByUserAndGroupName(users, text);
@@ -102,17 +101,23 @@ public class TelegramService extends TelegramLongPollingBot {
                     }
                     if (message.hasEntities()) {
                         List<MessageEntity> messageEntities = message.getEntities();
-                        //в цикле пройтись по листу messageEntities из него получить url которые содержат "/video/" или "/photo/" и ими заполнить лист attach
-                        //если url содержит "/video/" то конечная строка должна выглядеть video_http://cdn-cf-east.streamable.com/video/mp4/...
-                        //если фото то photo_http://...
+                        for(MessageEntity messageEntity : messageEntities){
+                            String url = messageEntity.getUrl();
+                            if (url == null){
+                                continue;
+                            }
+                            if (url.contains("/video/")){
+                                attach.add("video_"+url);
+                            }
+                            else if (url.contains("/photo/")){
+                                attach.add("photo_"+url);
+                            }
+                        }
                     }
                     if (message.getCaption() != null) {
                         caption = message.getCaption();
-                    }
-                    if (message.getForwardFromChat() != null) {
-                        chat = message.getForwardFromChat();
-                    } else {
-                        ok = false;
+                    } else if (message.hasText()){
+                        caption = message.getText();
                     }
                     if (attach.isEmpty()) {
                         ok = false;
@@ -166,11 +171,22 @@ public class TelegramService extends TelegramLongPollingBot {
             filePath = file.getFilePath();
         } catch (TelegramApiException e) {
             e.printStackTrace();
+            return null;
         }
         return "photo_https://api.telegram.org/file/bot"+ botConfig.getToken() + "/" + filePath;
     }
     public String videoUpload(Message message){
+        Video video = message.getVideo();
+        String fileId = video.getFileId();
         String filePath = "";
+        try {
+        GetFile getFileMethod = new GetFile(fileId);
+        File file = execute(getFileMethod);
+        filePath = file.getFilePath();
+        } catch (TelegramApiException e) {
+            e.printStackTrace();
+            return null;
+        }
         //Метод должен вернуть ссылку на видео, если её вставит в бораузер она скачается
         return "video_https://api.telegram.org/file/bot"+ botConfig.getToken() + "/" + filePath;
     }
