@@ -106,18 +106,7 @@ public class TelegramService extends TelegramLongPollingBot {
                     }
                     if (message.hasEntities()) {
                         List<MessageEntity> messageEntities = message.getEntities();
-                        for(MessageEntity messageEntity : messageEntities){
-                            String url = messageEntity.getUrl();
-                            if (url == null){
-                                continue;
-                            }
-                            if (url.contains("/video/")){
-                                attach.add("video_"+url);
-                            }
-                            else if (url.contains("/photo/")){
-                                attach.add("photo_"+url);
-                            }
-                        }
+                        //Пройтись циклом по messageEntities и добавить все url которые содержат /video/ в attach
                     }
                     if (message.getCaption() != null) {
                         caption = message.getCaption();
@@ -144,7 +133,6 @@ public class TelegramService extends TelegramLongPollingBot {
                                 .postId(savedPost.getId())
                                 .userId(users.getVkId())
                                 .build();
-                        kafkaProducer.sendMessage( "url_post" ,urlPost.toJson());
                         sendTGMessage(chatId, "Опубликованно в " + text);
                     }
                 }
@@ -167,31 +155,12 @@ public class TelegramService extends TelegramLongPollingBot {
     }
 
     public String photoUpload(Message message){
-        List<PhotoSize> photos = message.getPhoto();
-        String fileId = photos.get(photos.size() - 1).getFileId();
+        //Здесь напиши метод
         String filePath = "";
-        try {
-            GetFile getFileMethod = new GetFile(fileId);
-            File file = execute(getFileMethod); // execute() — метод из TelegramLongPollingBot
-            filePath = file.getFilePath();
-        } catch (TelegramApiException e) {
-            e.printStackTrace();
-            return null;
-        }
         return "photo_https://api.telegram.org/file/bot"+ botConfig.getToken() + "/" + filePath;
     }
     public String videoUpload(Message message){
-        Video video = message.getVideo();
-        String fileId = video.getFileId();
         String filePath = "";
-        try {
-        GetFile getFileMethod = new GetFile(fileId);
-        File file = execute(getFileMethod);
-        filePath = file.getFilePath();
-        } catch (TelegramApiException e) {
-            e.printStackTrace();
-            return null;
-        }
         //Метод должен вернуть ссылку на видео, если её вставит в бораузер она скачается
         return "video_https://api.telegram.org/file/bot"+ botConfig.getToken() + "/" + filePath;
     }
